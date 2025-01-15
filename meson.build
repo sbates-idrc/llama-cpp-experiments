@@ -11,3 +11,9 @@ executable(
     'simple.cpp',
     dependencies : llama_dep
 )
+
+executable(
+    'simple2',
+    'simple2.cpp',
+    dependencies : llama_dep
+)
