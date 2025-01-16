@@ -5,6 +5,32 @@
 #include <string>
 #include <vector>
 
+class TokenPrinter {
+public:
+    TokenPrinter();
+    void print_token(const struct llama_model * model, llama_token token);
+    void reset_token_count();
+private:
+    int token_count;
+};
+
+TokenPrinter::TokenPrinter() : token_count(1) {}
+
+void TokenPrinter::print_token(const struct llama_model * model, llama_token token) {
+    char buf[128];
+    int n = llama_token_to_piece(model, token, buf, sizeof(buf), 0, true);
+    if (n < 0) {
+        throw std::runtime_error(std::string(__func__) + ": error: failed to convert token to piece");
+    }
+    std::string s(buf, n);
+    printf("%-8d%-8d\"%s\"\n", this->token_count, token, s.c_str());
+    this->token_count += 1;
+}
+
+void TokenPrinter::reset_token_count() {
+    this->token_count = 1;
+}
+
 static void print_usage(int, char ** argv) {
     printf("\nexample usage:\n");
     printf("\n    %s -m model.gguf [-n n_predict] [-ngl n_gpu_layers] [prompt]\n", argv[0]);
@@ -16,20 +42,6 @@ static void no_log(enum ggml_log_level level, const char * text, void * user_dat
     (void)text;      // unused
     (void)user_data; // unused
     // do nothing
-}
-
-static void print_tokens(const struct llama_model * model, const std::vector<llama_token> &tokens) {
-    int token_count = 0;
-    for (auto id : tokens) {
-        char buf[128];
-        int n = llama_token_to_piece(model, id, buf, sizeof(buf), 0, true);
-        if (n < 0) {
-            throw std::runtime_error(std::string(__func__) + ": error: failed to convert token to piece");
-        }
-        std::string s(buf, n);
-        printf("%d, %d: \"%s\"\n", token_count, id, s.c_str());
-        token_count += 1;
-    }
 }
 
 int main(int argc, char ** argv) {
@@ -154,13 +166,22 @@ int main(int argc, char ** argv) {
 
     // print the prompt token-by-token
 
-    print_tokens(model, prompt_tokens);
+    TokenPrinter token_printer;
+
+    printf("Prompt\n======\n\n");
+
+    for (auto id : prompt_tokens) {
+        token_printer.print_token(model, id);
+    }
 
     // prepare a batch for the prompt
 
     llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
 
     // main loop
+
+    printf("\nPredictions\n===========\n\n");
+    token_printer.reset_token_count();
 
     const auto t_main_start = ggml_time_us();
     int n_decode = 0;
@@ -184,14 +205,7 @@ int main(int argc, char ** argv) {
                 break;
             }
 
-            char buf[128];
-            int n = llama_token_to_piece(model, new_token_id, buf, sizeof(buf), 0, true);
-            if (n < 0) {
-                fprintf(stderr, "%s: error: failed to convert token to piece\n", __func__);
-                return 1;
-            }
-            std::string s(buf, n);
-            printf("%s", s.c_str());
+            token_printer.print_token(model, new_token_id);
             fflush(stdout);
 
             // prepare the next batch with the sampled token
