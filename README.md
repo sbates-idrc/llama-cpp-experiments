@@ -4,9 +4,10 @@ llama.cpp experiments
 Prerequisites
 -------------
 
-- llama.cpp
+- llama.cpp 4457
 - C++ compiler
 - Meson
+- Ninja
 
 Building
 --------
