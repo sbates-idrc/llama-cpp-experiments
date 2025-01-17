@@ -4,8 +4,8 @@ llama.cpp experiments
 Prerequisites
 -------------
 
-- llama.cpp 4457
 - C++ compiler
+- CMake
 - Meson
 - Ninja
 
@@ -13,7 +13,8 @@ Building
 --------
 
 ```
-meson setup build
+./build-llama.cpp.sh
+PKG_CONFIG_PATH="$(pwd)/local/lib/pkgconfig:$PKG_CONFIG_PATH" meson setup build
 cd build
 meson compile
 ```
